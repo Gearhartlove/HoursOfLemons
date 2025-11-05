@@ -22,10 +22,7 @@ def extract_pdf_content(pdf_path, output_dir):
     doc = fitz.open(pdf_path)
 
     # Store extracted data
-    extracted_data = {
-        "source": str(pdf_path),
-        "pages": []
-    }
+    extracted_data = {"source": str(pdf_path), "pages": []}
 
     print(f"Processing {len(doc)} pages...")
 
@@ -55,18 +52,20 @@ def extract_pdf_content(pdf_path, output_dir):
             with open(image_path, "wb") as img_file:
                 img_file.write(image_bytes)
 
-            page_images.append({
-                "filename": image_filename,
-                "path": str(image_path),
-                "format": image_ext
-            })
+            page_images.append(
+                {
+                    "filename": image_filename,
+                    "path": str(image_path),
+                    "format": image_ext,
+                }
+            )
 
         # Store page data
         page_data = {
             "page_number": page_num + 1,
             "text": text.strip(),
             "images": page_images,
-            "image_count": len(page_images)
+            "image_count": len(page_images),
         }
 
         extracted_data["pages"].append(page_data)
