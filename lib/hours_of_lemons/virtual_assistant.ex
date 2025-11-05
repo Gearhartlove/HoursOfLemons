@@ -37,13 +37,23 @@ defmodule HoursOfLemons.VirtualAssistant do
     system_prompt = build_system_prompt(state)
     {:ok, body} = HoursOfLemons.Llm.query(text, system_prompt: system_prompt)
 
+    answer =
+      body
+      |> Map.get("output")
+      |> Enum.at(1)
+      |> Map.get("content")
+      |> Enum.at(0)
+      |> Map.get("text")
+
+    IO.puts(answer)
+
     # Append to the list of messages to maintain conversation state
     messages = Map.fetch!(state, :messages)
     messages = [body | messages]
 
     new_state = %{state | messages: messages}
 
-    {:reply, body, new_state}
+    {:reply, :ok, new_state}
   end
 
   @impl true
@@ -67,7 +77,10 @@ defmodule HoursOfLemons.VirtualAssistant do
 
   # Private Functions
   defp build_system_prompt(%{dataset_path: dataset_path}) do
-    dataset_content = File.read!(dataset_path)
+    dataset_content =
+      dataset_path
+      |> File.read!()
+      |> JSON.decode!()
 
     """
     You are the 24 Hours of Lemons Virtual Inspector, an AI assistant that helps racers prepare their vehicles for
@@ -77,9 +90,13 @@ defmodule HoursOfLemons.VirtualAssistant do
     Fail Lemons Tech Inspection" guide.
 
     When answering questions:
-    - Provide clear, practical guidance based on the tech inspection rules
+    - Keep answers BRIEF and to the point - racers need quick, actionable information
+    - ALWAYS cite the specific page number(s) from the guide that support your answer
+    - Format citations like: "(Page 5)" or "(Pages 3-4)"
     - Reference specific requirements and safety standards when applicable
     - Include relevant images from the inspection guide to illustrate your points
+    - When referencing images, use the full file path with file:// protocol (e.g., "file:///home/kgf/src/projects/hours_of_lemons/data/extracted/images/page_5_img_1.jpeg")
+    - Format image references as clickable links when possible
     - Use a helpful but direct tone - you want racers to pass inspection
     - If something is a hard requirement vs. recommendation, make that clear
     - When in doubt about handwritten annotations in images, explain what they're pointing out
@@ -88,13 +105,13 @@ defmodule HoursOfLemons.VirtualAssistant do
     grassroots and scrappy. Your goal is to help racers understand what's required to pass tech inspection and race
     safely.
 
-    Here is the information you have on hand: 
+    Here is the information you have on hand:
     <information_on_hand>
     #{inspect(dataset_content)}
     </information_on_hand>
 
     Remember: You're helping people prepare vehicles for wheel-to-wheel racing. When it comes to safety items (roll
-    cages, harnesses, fire suppression, etc.), be thorough and err on the side of caution.
+    cages, harnesses, fire suppulsion, etc.), be thorough and err on the side of caution. Always cite page numbers.
     """
   end
 end

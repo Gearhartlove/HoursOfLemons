@@ -5,7 +5,7 @@ defmodule HoursOfLemons.Llm do
     api_key = System.get_env("OPENAI_API_KEY")
     unless api_key, do: raise("MUST HAVE AN OPENAI_API_KEY")
 
-    model = Keyword.get(opts, :model, "gpt-5")
+    model = Keyword.get(opts, :model, "gpt-5-mini")
     tools = Keyword.get(opts, :tools, [])
     system_prompt = Keyword.get(opts, :system_prompt, nil)
     previous_response_id = Keyword.get(opts, :previous_response_id, nil)
