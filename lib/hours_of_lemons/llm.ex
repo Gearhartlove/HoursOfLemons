@@ -39,19 +39,8 @@ defmodule HoursOfLemons.Llm do
     }
   end
 
-  defp create_payload(model, query, tools, previous_response_id) when is_map(query) do
-    %{
-      model: model,
-      input: [query],
-      tools: tools,
-      reasoning: %{
-        effort: "minimal"
-      },
-      previous_response_id: previous_response_id
-    }
-  end
-
-  defp create_payload(model, query, tools, previous_response_id) when is_list(query) do
+  defp create_payload(model, query, tools, previous_response_id, _system_prompt)
+       when is_list(query) do
     %{
       model: model,
       input: query,
@@ -63,7 +52,8 @@ defmodule HoursOfLemons.Llm do
     }
   end
 
-  defp create_payload(_model, query, _tools, _previous_response_id) when is_list(query) do
+  defp create_payload(_model, query, _tools, _previous_response_id, _system_prompt)
+       when is_list(query) do
     throw("Query is in wrong format: #{query}")
   end
 

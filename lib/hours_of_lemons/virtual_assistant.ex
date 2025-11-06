@@ -1,18 +1,14 @@
 defmodule HoursOfLemons.VirtualAssistant do
-  alias ElixirLS.LanguageServer.Providers.Completion.Reducers.Callbacks
   use GenServer
 
-  def start_link(args \\ []) do
-    GenServer.start_link(__MODULE__, args)
+  @timeout 20_000
+
+  def start_link(initial_state \\ []) do
+    GenServer.start_link(__MODULE__, initial_state)
   end
 
-  def query(pid, text) do
-    GenServer.call(pid, {:query, text}, 20000)
-  end
-
-  # NOTE: The idea of this function is to support updating different pieces about the assistant like dataset or model
-  def update_state(pid, key, value) when is_atom(key) do
-    GenServer.call(pid, {:update_state, key, value})
+  def query(pid, text, timeout \\ @timeout) do
+    GenServer.call(pid, {:query, text}, timeout)
   end
 
   # Callbacks
@@ -26,10 +22,7 @@ defmodule HoursOfLemons.VirtualAssistant do
         "/home/kgf/src/projects/hours_of_lemons/data/extracted/extracted_metadata.json"
       )
 
-    # TODO: add picture support, probably need to hook up directory. 
-    # Question: is this tied to other dataset content?
-
-    {:ok, %{dataset_path: dataset_path, messages: []}}
+    {:ok, %{dataset_path: dataset_path}}
   end
 
   @impl true
@@ -45,43 +38,10 @@ defmodule HoursOfLemons.VirtualAssistant do
       |> Enum.at(0)
       |> Map.get("text")
 
-    IO.puts(answer)
-
-    # Generate HTML output file
-    html_path = generate_html_response(text, answer)
-    IO.puts("\nHTML response saved to: #{html_path}")
-
-    # Append to the list of messages to maintain conversation state
-    messages = Map.fetch!(state, :messages)
-    messages = [body | messages]
-
-    new_state = %{state | messages: messages}
-
-    {:reply, :ok, new_state}
+    {:reply, {:ok, answer}, state}
   end
 
-  @impl true
-  def handle_call({:update_state, key, value}, _from, state) do
-    case Map.fetch(state, key) do
-      {:ok, _} ->
-        new_state = Map.put(state, key, value)
-        {:reply, {:ok, new_state}, new_state}
-
-      :error ->
-        {
-          :reply,
-          {
-            :error,
-            "Attempted to add [#{inspect(key)}] to state. Can only adjust existing keys. The existing keys are #{Map.keys(state)}."
-          },
-          state
-        }
-    end
-  end
-
-  # Private Functions
-
-  defp generate_html_response(question, answer) do
+  def generate_html_response(question, answer) do
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601() |> String.replace(":", "-")
     output_dir = Path.expand("./data/responses")
     File.mkdir_p!(output_dir)
@@ -90,11 +50,12 @@ defmodule HoursOfLemons.VirtualAssistant do
     filepath = Path.join(output_dir, filename)
 
     # Convert file:// URLs to proper img tags
-    answer_with_images = Regex.replace(
-      ~r/file:\/\/([^\s]+\.(jpeg|jpg|png))/i,
-      answer,
-      "<br><img src=\"file://\\1\" style=\"max-width: 800px; margin: 10px 0;\"><br>"
-    )
+    answer_with_images =
+      Regex.replace(
+        ~r/file:\/\/([^\s]+\.(jpeg|jpg|png))/i,
+        answer,
+        "<br><img src=\"file://\\1\" style=\"max-width: 800px; margin: 10px 0;\"><br>"
+      )
 
     html = """
     <!DOCTYPE html>
@@ -163,8 +124,11 @@ defmodule HoursOfLemons.VirtualAssistant do
     """
 
     File.write!(filepath, html)
-    filepath
+
+    {:ok, filepath}
   end
+
+  # Private Functions
 
   defp build_system_prompt(%{dataset_path: dataset_path}) do
     dataset_content =
