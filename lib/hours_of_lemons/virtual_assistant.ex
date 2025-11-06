@@ -1,12 +1,58 @@
 defmodule HoursOfLemons.VirtualAssistant do
+  @moduledoc """
+  GenServer for the 24 Hours of Lemons Virtual Inspector.
+
+  This module provides an AI-powered virtual inspector that answers questions
+  about vehicle technical inspection requirements using the official Lemons
+  tech inspection guide. It generates HTML responses with embedded images.
+  """
+
   use GenServer
 
   @timeout 20_000
 
+  @doc """
+  Starts the Virtual Assistant GenServer.
+
+  ## Parameters
+    - `initial_state` - Keyword list with optional configuration:
+      - `:dataset_path` - Path to the extracted metadata JSON file
+
+  ## Returns
+    - `{:ok, pid}` - The PID of the started GenServer
+
+  ## Examples
+
+      iex> {:ok, pid} = HoursOfLemons.VirtualAssistant.start_link()
+      iex> is_pid(pid)
+      true
+
+  """
   def start_link(initial_state \\ []) do
     GenServer.start_link(__MODULE__, initial_state)
   end
 
+  @doc """
+  Queries the Virtual Assistant with a question about tech inspection.
+
+  The assistant will provide a brief answer with page citations and relevant
+  images from the inspection guide.
+
+  ## Parameters
+    - `pid` - The PID of the Virtual Assistant GenServer
+    - `text` - The user's question about vehicle inspection
+    - `timeout` - Optional timeout in milliseconds (default: 20,000)
+
+  ## Returns
+    - `{:ok, answer}` - The assistant's response as a string
+
+  ## Examples
+
+      iex> {:ok, pid} = HoursOfLemons.VirtualAssistant.start_link()
+      iex> HoursOfLemons.VirtualAssistant.query(pid, "Do I need to organize my wires?")
+      {:ok, "Yes, wires must be organized and secured (Page 12)..."}
+
+  """
   def query(pid, text, timeout \\ @timeout) do
     GenServer.call(pid, {:query, text}, timeout)
   end
@@ -41,6 +87,28 @@ defmodule HoursOfLemons.VirtualAssistant do
     {:reply, {:ok, answer}, state}
   end
 
+  @doc """
+  Generates a timestamped HTML file containing a question and answer.
+
+  Creates a styled HTML page with embedded images (from file:// URLs) and
+  saves it to `data/responses/` with an ISO8601 timestamp in the filename.
+
+  ## Parameters
+    - `question` - The original question asked by the user
+    - `answer` - The assistant's response (may contain file:// URLs to images)
+
+  ## Returns
+    - `{:ok, filepath}` - Path to the generated HTML file
+
+  ## Examples
+
+      iex> HoursOfLemons.VirtualAssistant.generate_html_response(
+      ...>   "Do I need a roll cage?",
+      ...>   "Yes, roll cages are required (Page 3)."
+      ...> )
+      {:ok, "/path/to/data/responses/response_2025-11-04T19-30-45.123456Z.html"}
+
+  """
   def generate_html_response(question, answer) do
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601() |> String.replace(":", "-")
     output_dir = Path.expand("./data/responses")
@@ -130,6 +198,7 @@ defmodule HoursOfLemons.VirtualAssistant do
 
   # Private Functions
 
+  # Builds the system prompt with embedded dataset content for the LLM
   defp build_system_prompt(%{dataset_path: dataset_path}) do
     dataset_content =
       dataset_path
