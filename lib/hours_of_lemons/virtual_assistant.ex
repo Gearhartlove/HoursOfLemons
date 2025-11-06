@@ -47,6 +47,10 @@ defmodule HoursOfLemons.VirtualAssistant do
 
     IO.puts(answer)
 
+    # Generate HTML output file
+    html_path = generate_html_response(text, answer)
+    IO.puts("\nHTML response saved to: #{html_path}")
+
     # Append to the list of messages to maintain conversation state
     messages = Map.fetch!(state, :messages)
     messages = [body | messages]
@@ -76,6 +80,92 @@ defmodule HoursOfLemons.VirtualAssistant do
   end
 
   # Private Functions
+
+  defp generate_html_response(question, answer) do
+    timestamp = DateTime.utc_now() |> DateTime.to_iso8601() |> String.replace(":", "-")
+    output_dir = Path.expand("./data/responses")
+    File.mkdir_p!(output_dir)
+
+    filename = "response_#{timestamp}.html"
+    filepath = Path.join(output_dir, filename)
+
+    # Convert file:// URLs to proper img tags
+    answer_with_images = Regex.replace(
+      ~r/file:\/\/([^\s]+\.(jpeg|jpg|png))/i,
+      answer,
+      "<br><img src=\"file://\\1\" style=\"max-width: 800px; margin: 10px 0;\"><br>"
+    )
+
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Virtual Inspector Response - #{timestamp}</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          max-width: 900px;
+          margin: 40px auto;
+          padding: 20px;
+          line-height: 1.6;
+          background: #f5f5f5;
+        }
+        .container {
+          background: white;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .question {
+          background: #e3f2fd;
+          padding: 15px;
+          border-left: 4px solid #2196f3;
+          margin-bottom: 20px;
+          border-radius: 4px;
+        }
+        .answer {
+          white-space: pre-wrap;
+        }
+        .timestamp {
+          color: #666;
+          font-size: 0.9em;
+          margin-bottom: 20px;
+        }
+        img {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          margin: 15px 0;
+        }
+        h1 {
+          color: #333;
+          border-bottom: 2px solid #2196f3;
+          padding-bottom: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏁 24 Hours of Lemons Virtual Inspector</h1>
+        <div class="timestamp">Generated: #{timestamp}</div>
+
+        <h2>Question:</h2>
+        <div class="question">#{question}</div>
+
+        <h2>Answer:</h2>
+        <div class="answer">#{answer_with_images}</div>
+      </div>
+    </body>
+    </html>
+    """
+
+    File.write!(filepath, html)
+    filepath
+  end
+
   defp build_system_prompt(%{dataset_path: dataset_path}) do
     dataset_content =
       dataset_path
