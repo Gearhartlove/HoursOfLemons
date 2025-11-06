@@ -50,31 +50,35 @@ After solving the data extraction, I started to build the virtual assistant. Her
 - **Query-able, not conversational**: because this is a prototype, I opted for a single query approach. The user is not having a conversation with a Virtual Assistant, instead they will be issuing specific queries for the Virtual Assistant. 
 - **Simple interface**: the only actions the user can take are `query` or `start_link`. For my use case, I want to start up my Virtual Assistant and start asking questions, these two functions facilitate these goals nicely.
 - **Only support querying OpenAI**: in general, I'm a big believer in being "llm agnostic" - aka not needing to rely on any specific provider. However, for this project I opted to write a *small* amount of boiler plate to query off to OpenAI to generate a simple response. I'm not using tool-use or reasoning or previous_response_ids or anything else like that.
-- **No dataset searching required**: in an effort to prove out a prototype, I opted to put the extracted text objects into the system prompt. This enabled rapid prototyping removed necessary boiler plate around storing records and embedding them.
-- **Render results as HTML Page**: I'm rendering the results of the query to an HTML page that can be easily opened up in a browser (double click the file in a file directory application to do so). I found this to be the easiest and clearest way to display the pictures alongside the text. note: If user's would prefer a text only approach, I also print out the results to the terminal. 
+- **No dataset searching required**: in an effort to prove out a prototype, I opted to put the extracted text objects into the system prompt. This enabled rapid prototyping and removed necessary boiler plate around storing records and embedding them.
+- **Render results as HTML Page**: I'm rendering the results of the query to an HTML page that can be easily opened up in a browser (double click the file in a file directory application to do so). I found this to be the easiest and clearest way to display the pictures alongside the text. If user's would prefer a text only approach, I also print out the results to the terminal. 
 
 ## What’s working and what’s not
 ### Here's what's working: 
-- The data extraction separated the images from the text.
+- The data extraction separated the images from the text
   - criteria: I have a directory of images and a metadata document of text objects
-- Images belong to a page and are cited as so. 
-  - criteria: I have images apart of the text objects in the `extracted_metadata.json` file.
-- The Virtual Assistant is able to answer questions intelligently about the necessary PDF
+- Images belong to a page and are cited as so
+  - criteria: I have images apart of the text objects in the `extracted_metadata.json` file
+- The Virtual Assistant is able to answer questions intelligently
   - criteria: The responses supplied by the agent when running `HoursOfLemons.ask_virtual_assistant/1` and saved to `/data/responses`
 - Virtual Assistant references page numbers in response 
   - criteria: page number annotations like `(Page 8)` appearing in response text
-- Virtual Assistant referencing relevant images in response 
+- Virtual Assistant references relevant images in response 
   - criteria: images included in response like "- Illustration: shows helmet clearance measurement — view: file:///home/kgf/src/projects/hours_of_lemons/data/extracted/images/page_8_img_1.jpeg"
 
 ### Here's what's not working: 
-- Virtual Assistant can't read the text inside the images, leaving valuable information the customer could ask about. 
-  - criteria: I've asked image-specific information and the Virtual Assistant has been unable to answer. I also never allow the Virtual Assistant to read through or interact with the images directly; it only ever references them via id.
+- Virtual Assistant can't read the text inside the images, leaving out valuable information the user could ask about
+  - criteria: I've asked image-specific information and the Virtual Assistant has been unable to answer. I also never allow the Virtual Assistant to read through or interact with the images directly; it only ever references them via id
+  - solution: add image processing in ingestion step
 - The customer can not have a conversation with the Virtual Assistant
-  - criteria: Virtual Assistant does not remember the past user interaction when interacting with the same `pid`. 
+  - criteria: Virtual Assistant does not remember the past user interaction when interacting with the same `pid`
+  - solution: add conversation messages to GenServer, append message once processed
 - Virtual Assistant oversteps it's capabilities and induces false agency
-  - criteria: With query "Any helmet related requirements?", Virtual Assistant says "If you want, tell me the helmet make/model and I’ll check common approvals (SNELL SA2015/2020, DOT is NOT sufficient for wheel-to-wheel racing in most events) and whether it’s likely acceptable.". NOTE: there is no functionality to make this check to begin with. 
+  - criteria: With query "Any helmet related requirements?", Virtual Assistant says "If you want, tell me the helmet make/model and I’ll check common approvals (SNELL SA2015/2020, DOT is NOT sufficient for wheel-to-wheel racing in most events) and whether it’s likely acceptable.". NOTE: there is no functionality to make this check to begin with
+  - solution: evaluate hallucination evalutation model before sending message 
 - Virtual Assistant not including every image 
   - criteria: Ask "Can I have cracks in my windshield?" and only have 1 image instead of the expected 2
+  - solution: annotate the images to teach the AI what is in each image
 
 ## Conclusion
-This prototype serves as an example of a Virtual Assistant attributing answers related to an ingested PDF, by including text and images in it's response. It's a vertical slice of what-could-be a more sophisticated Virtual Assistant that could answer a multitude of complex questions related to 24 Hours of Lemons rules and regulations. 
+This prototype serves as an example of a Virtual Assistant which generates answers related to an ingested PDF, by including text, images, and page numbers in its responses. This build is the first version of a sophisticated Virtual Assistant that can answer a multitude of complex questions related to 24 Hours of Lemons rules and regulations. 
